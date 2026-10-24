@@ -65,6 +65,14 @@ npm run test:race             # concurrency proof
 npm run build && npm start
 ```
 
+### Deploy on Vercel
+
+1. In the Vercel project, open **Storage**, add a **Neon** Postgres database and connect it. This sets `DATABASE_URL`. Pick the same region as your functions.
+2. Under **Settings → Environment Variables**, add `SESSION_SECRET` (a long random string), `ADMIN_EMAIL` and `ADMIN_PASSWORD`. Set `SEED_DEMO=false` to start without the demo theatres.
+3. Redeploy. The `vercel-build` script applies migrations, creates the admin (and demo data if the database is empty), then builds.
+
+Theatres are served at `https://<project>.vercel.app/<slug>`. Leave `ROOT_DOMAIN` unset on `vercel.app`. Subdomain routing needs your own domain with a wildcard (`*.example.com`) added to the project.
+
 ### Changing the schema
 
 Edit `src/db/schema.ts`, run `npm run db:generate`, and commit the new file in `drizzle/`.

@@ -15,13 +15,14 @@ function rng(seed: number) {
 
 export async function seedIfEmpty(db: DB) {
   const [{ n }] = (await db.execute<{ n: number }>(sql`SELECT count(*)::int AS n FROM organizations`)).rows;
-  if (n === 0) await seedDemo(db);
+  if (n === 0 && process.env.SEED_DEMO !== 'false') await seedDemo(db);
 }
 
 export async function ensureAdmin(db: DB) {
   const email = (process.env.ADMIN_EMAIL || 'admin@example.com').toLowerCase();
   const [exists] = await db.select().from(platformAdmins).where(eq(platformAdmins.email, email));
   if (!exists) {
+    if (process.env.VERCEL && !process.env.ADMIN_PASSWORD) throw new Error('Set ADMIN_EMAIL and ADMIN_PASSWORD in Vercel before the first deploy.');
     await db.insert(platformAdmins).values({ email, name: 'Platform admin', passwordHash: await hashSecret(process.env.ADMIN_PASSWORD || 'admin12345') });
   }
 }

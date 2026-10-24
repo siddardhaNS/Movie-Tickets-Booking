@@ -17,14 +17,19 @@ const g = globalThis as unknown as { __ticketDb?: Holder };
 
 export const MIGRATIONS_DIR = path.join(process.cwd(), 'drizzle');
 
+// Vercel's Neon integration sets DATABASE_URL; Supabase and older Vercel Postgres set POSTGRES_URL.
+export const databaseUrl = () => process.env.DATABASE_URL || process.env.POSTGRES_URL;
+
 function create(): Holder {
-  const url = process.env.DATABASE_URL;
+  const url = databaseUrl();
   if (url) {
-    const pool = new pg.Pool({ connectionString: url, max: Number(process.env.DB_POOL_MAX ?? 10) });
+    // Serverless functions each get their own pool, so keep it small there (use the provider's pooled URL).
+    const pool = new pg.Pool({ connectionString: url, max: Number(process.env.DB_POOL_MAX ?? (process.env.VERCEL ? 3 : 10)) });
     return { db: drizzlePg(pool, { schema }), ready: Promise.resolve(), close: () => pool.end(), kind: 'postgres' };
   }
   // Zero-setup dev database. PGlite runs one query at a time, so it is for development only;
   // use Postgres (DATABASE_URL) anywhere real customers book.
+  if (process.env.VERCEL) throw new Error('DATABASE_URL is not set. Add a Postgres database (e.g. Neon) to this Vercel project.');
   const dir = path.join(process.cwd(), '.data', 'pglite');
   fs.mkdirSync(dir, { recursive: true });
   const client = new PGlite(dir);
